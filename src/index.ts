@@ -1,0 +1,1 @@
+export const DEFAULT_MEAN_INTERVAL = 3_600_000;

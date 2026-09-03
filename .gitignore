@@ -1,0 +1,7 @@
+node_modules/
+dist/
+coverage/
+# roborev snapshots
+/.roborev/
+# local design docs, by preference never committed
+/docs/superpowers/

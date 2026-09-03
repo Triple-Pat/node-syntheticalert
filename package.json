@@ -1,0 +1,50 @@
+{
+  "name": "@triplepat/syntheticalert",
+  "version": "0.0.0",
+  "description": "A time-based callback to drive a synthetic alert metric, so a Triple Pat check-in timer can verify your alerting pipeline end to end.",
+  "keywords": [
+    "alerting",
+    "monitoring",
+    "prometheus",
+    "opentelemetry",
+    "synthetic-alert",
+    "triplepat"
+  ],
+  "homepage": "https://triplepat.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Triple-Pat/node-syntheticalert.git"
+  },
+  "license": "Apache-2.0",
+  "author": "Triple Pat",
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=22.12"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "prettier --check . && eslint . && npm run typecheck",
+    "format": "prettier --write .",
+    "test": "node --test --experimental-test-coverage --test-coverage-include='src/**' --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 'test/*.test.ts'",
+    "test:ci": "mkdir -p coverage && node --test --experimental-test-coverage --test-coverage-include='src/**' --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=coverage/lcov.info 'test/*.test.ts'"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.4.1",
+    "eslint": "^10.9.1",
+    "prettier": "^3.9.6",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.69.0"
+  }
+}
