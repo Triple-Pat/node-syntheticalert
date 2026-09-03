@@ -9,6 +9,14 @@
  * reimplementing the memoryless sampler in each library. It is not part of
  * the public API: package.json's exports map hides this module from
  * consumers.
+ *
+ * Preconditions, validated once by `syntheticAlert()` rather than on every
+ * draw: all three are positive and finite, and `min <= mean <= max`. The
+ * finiteness argument below relies on `min <= mean`.
+ *
+ * @param mean mean of the untruncated exponential, in ms
+ * @param min lower bound on the returned gap, in ms; at most `mean`
+ * @param max upper bound on the returned gap, in ms; at least `mean`
  */
 export function truncatedExponential(mean: number, min: number, max: number): number {
   // Work with the survival function S(x) = exp(-x / mean), which is strictly

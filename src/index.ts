@@ -78,12 +78,16 @@ export interface SyntheticAlertOptions {
 
 /**
  * Rejects anything a JavaScript caller might pass that is not a positive,
- * finite number. NaN compares false to everything, so the isFinite check is
+ * finite number: a TypeError for the wrong type, a RangeError for a number
+ * out of range. NaN compares false to everything, so the isFinite check is
  * what catches it.
  */
 function assertPositiveFinite(name: string, value: unknown): asserts value is number {
-  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
-    throw new RangeError(`${name} must be positive and finite, got ${String(value)}`);
+  if (typeof value !== 'number') {
+    throw new TypeError(`${name} must be a number, got ${typeof value}`);
+  }
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new RangeError(`${name} must be positive and finite, got ${value}`);
   }
 }
 
@@ -103,7 +107,8 @@ function assertPositiveFinite(name: string, value: unknown): asserts value is nu
  * at which point every transition up to `Date.now()` is replayed. The first
  * firing starts one silent gap after this function returns.
  *
- * @throws {RangeError} if any option is not a positive finite number, the
+ * @throws {TypeError} if an option is not a number.
+ * @throws {RangeError} if an option is not a positive finite number, the
  *   firing duration is not less than the mean interval, or the min and max
  *   intervals do not bracket the mean.
  */

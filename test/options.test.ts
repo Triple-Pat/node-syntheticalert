@@ -9,6 +9,8 @@ import {
   type SyntheticAlertOptions,
 } from '../src/index.ts';
 
+// The four defaults are a cross-language contract with the Go and Python
+// libraries in this series; a timer sized for one must fit the others.
 test('defaults match the series', () => {
   assert.equal(DEFAULT_MEAN_INTERVAL, 60 * 60 * 1000);
   assert.equal(DEFAULT_MIN_INTERVAL, 10 * 60 * 1000);
@@ -36,7 +38,7 @@ const names: (keyof SyntheticAlertOptions)[] = [
 ];
 
 for (const name of names) {
-  test(`${name} rejects zero, negative, non-finite, and non-number values`, () => {
+  test(`${name} rejects zero, negative, and non-finite numbers, and non-numbers`, () => {
     const bad = [0, -1, Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY];
     for (const value of bad) {
       assert.throws(() => syntheticAlert(only(name, value)), {
@@ -44,10 +46,10 @@ for (const name of names) {
         message: /must be positive and finite, got/,
       });
     }
-    // JavaScript callers get no type checking; a string must fail the same way.
+    // JavaScript callers get no type checking; a wrong type is a TypeError.
     assert.throws(() => syntheticAlert(only(name, '600000' as unknown as number)), {
-      name: 'RangeError',
-      message: /must be positive and finite, got 600000/,
+      name: 'TypeError',
+      message: /must be a number, got string/,
     });
   });
 }
