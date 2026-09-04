@@ -1,3 +1,5 @@
+[![Lint and Test](https://github.com/Triple-Pat/node-syntheticalert/actions/workflows/ci.yml/badge.svg)](https://github.com/Triple-Pat/node-syntheticalert/actions/workflows/ci.yml) [![Coverage Status](https://coveralls.io/repos/github/Triple-Pat/node-syntheticalert/badge.svg?branch=main)](https://coveralls.io/github/Triple-Pat/node-syntheticalert?branch=main)
+
 # node-syntheticalert
 
 Drive a synthetic alert metric from Node.js, so a
