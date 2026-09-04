@@ -1,0 +1,55 @@
+name: Lint and Test
+run-name: 'Lint and Test: ${{ github.event.head_commit.message || github.event.pull_request.title }}'
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  ci:
+    name: Lint and Test (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 22 is the engines floor (22.18+ runs .ts tests directly and can
+        # require() an ES module; setup-node resolves "22" to the latest 22.x).
+        node-version: [22, 24, 26]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+      - run: npm ci
+
+      # --- Linting ---
+      - name: YAML Lint
+        uses: ibiqlik/action-yamllint@v3
+        with:
+          config_file: .yamllint
+      - name: Prettier
+        run: npx prettier --check .
+      - name: ESLint
+        run: npx eslint .
+      - name: Type check
+        run: npx tsc --noEmit
+
+      # --- Tests ---
+      - name: Tests (100% coverage gate)
+        run: npm run test:ci
+      - name: Build
+        run: npm run build
+      # Proves the README's claim rather than asserting it.
+      - name: CommonJS consumers can require() the package
+        run: node -e "const { syntheticAlert } = require('./dist/index.js'); console.log('value', syntheticAlert()())"
+      # Feeds the README's Coveralls badge with measured coverage. Main only:
+      # fork PRs get a read-only token and the upload would fail. One matrix
+      # leg only, so Coveralls sees one report per commit.
+      - name: Coveralls
+        if: github.ref == 'refs/heads/main' && matrix.node-version == 26
+        uses: coverallsapp/github-action@v2
+        with:
+          file: coverage/lcov.info
