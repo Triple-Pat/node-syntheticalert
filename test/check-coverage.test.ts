@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -12,10 +12,15 @@ function gate(
   name: string,
   lcov: string,
 ): { status: number | null; stdout: string; stderr: string } {
-  const path = join(mkdtempSync(join(tmpdir(), 'check-coverage-')), name);
-  writeFileSync(path, lcov);
-  const result = spawnSync(process.execPath, [SCRIPT, path], { encoding: 'utf8' });
-  return { status: result.status, stdout: result.stdout, stderr: result.stderr };
+  const dir = mkdtempSync(join(tmpdir(), 'check-coverage-'));
+  try {
+    const path = join(dir, name);
+    writeFileSync(path, lcov);
+    const result = spawnSync(process.execPath, [SCRIPT, path], { encoding: 'utf8' });
+    return { status: result.status, stdout: result.stdout, stderr: result.stderr };
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 }
 
 const FULL = [
