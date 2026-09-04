@@ -38,12 +38,14 @@ const names: (keyof SyntheticAlertOptions)[] = [
 ];
 
 for (const name of names) {
-  test(`${name} rejects zero, negative, and non-finite numbers, and non-numbers`, () => {
-    const bad = [0, -1, Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY];
+  test(`${name} rejects sub-millisecond, zero, negative, and non-finite numbers, and non-numbers`, () => {
+    // Below 1 ms the replay loop could fail to advance Date.now()-scale
+    // doubles and spin; see assertDuration in src/index.ts.
+    const bad = [0.5, 0, -1, Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY];
     for (const value of bad) {
       assert.throws(() => syntheticAlert(only(name, value)), {
         name: 'RangeError',
-        message: /must be positive and finite, got/,
+        message: /must be a finite number of at least 1 ms, got/,
       });
     }
     // JavaScript callers get no type checking; a wrong type is a TypeError.
@@ -54,19 +56,26 @@ for (const name of names) {
   });
 }
 
-test('the positive-and-finite message names the option in words', () => {
+test('the duration message names the option in words', () => {
   assert.throws(() => syntheticAlert({ meanInterval: Number.NaN }), {
-    message: 'mean interval must be positive and finite, got NaN',
+    message: 'mean interval must be a finite number of at least 1 ms, got NaN',
   });
   assert.throws(() => syntheticAlert({ minInterval: 0 }), {
-    message: 'min interval must be positive and finite, got 0',
+    message: 'min interval must be a finite number of at least 1 ms, got 0',
   });
   assert.throws(() => syntheticAlert({ maxInterval: -5 }), {
-    message: 'max interval must be positive and finite, got -5',
+    message: 'max interval must be a finite number of at least 1 ms, got -5',
   });
   assert.throws(() => syntheticAlert({ firingDuration: Number.POSITIVE_INFINITY }), {
-    message: 'firing duration must be positive and finite, got Infinity',
+    message: 'firing duration must be a finite number of at least 1 ms, got Infinity',
   });
+});
+
+test('exactly 1 ms is the smallest legal duration', () => {
+  assert.equal(
+    typeof syntheticAlert({ meanInterval: 2, minInterval: 1, maxInterval: 3, firingDuration: 1 }),
+    'function',
+  );
 });
 
 test('the firing duration must be less than the mean interval', () => {

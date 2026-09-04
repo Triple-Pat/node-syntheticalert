@@ -94,6 +94,15 @@ test('gaps are memoryless: K-S against the truncated exponential', () => {
   assert.ok(passesKs(() => truncatedExponential(mean, min, max), truncatedCdf(mean, min, max)));
 });
 
+test('the shape also holds in the far tail where S(max) underflows to 0', () => {
+  // The same parameters as the finiteness test above; here the K-S test
+  // checks that the survival-space arithmetic still yields the right
+  // distribution, not merely finite in-bounds numbers.
+  assert.ok(
+    passesKs(() => truncatedExponential(1_000, 1, 1_000_000), truncatedCdf(1_000, 1, 1_000_000)),
+  );
+});
+
 test('K-S accepts an independent implementation of the right distribution', () => {
   // The memoryless property lets a truncated exponential on [min, max] be
   // drawn as min plus an exponential truncated to [0, max - min], by a

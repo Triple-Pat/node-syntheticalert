@@ -78,17 +78,23 @@ export interface SyntheticAlertOptions {
 }
 
 /**
- * Rejects anything a JavaScript caller might pass that is not a positive,
- * finite number: a TypeError for the wrong type, a RangeError for a number
- * out of range. NaN compares false to everything, so the isFinite check is
- * what catches it.
+ * Rejects anything a JavaScript caller might pass that is not a finite number
+ * of at least one millisecond: a TypeError for the wrong type, a RangeError
+ * for a number out of range. NaN compares false to everything, so the
+ * isFinite check is what catches it.
+ *
+ * The 1 ms floor is not cosmetic. Date.now() is integer milliseconds, and at
+ * epoch scale a double cannot resolve increments much below a microsecond, so
+ * a tiny duration could leave the replay loop's `next` unchanged and spin
+ * forever. With every duration at least 1 ms, the loop runs at most once per
+ * elapsed millisecond.
  */
-function assertPositiveFinite(name: string, value: unknown): asserts value is number {
+function assertDuration(name: string, value: unknown): asserts value is number {
   if (typeof value !== 'number') {
     throw new TypeError(`${name} must be a number, got ${typeof value}`);
   }
-  if (!Number.isFinite(value) || value <= 0) {
-    throw new RangeError(`${name} must be positive and finite, got ${value}`);
+  if (!Number.isFinite(value) || value < 1) {
+    throw new RangeError(`${name} must be a finite number of at least 1 ms, got ${value}`);
   }
 }
 
@@ -109,19 +115,19 @@ function assertPositiveFinite(name: string, value: unknown): asserts value is nu
  * firing starts one silent gap after this function returns.
  *
  * @throws {TypeError} if an option is not a number.
- * @throws {RangeError} if an option is not a positive finite number, the
- *   firing duration is not less than the mean interval, or the min and max
- *   intervals do not bracket the mean.
+ * @throws {RangeError} if an option is not a finite number of at least 1 ms,
+ *   the firing duration is not less than the mean interval, or the min and
+ *   max intervals do not bracket the mean.
  */
 export function syntheticAlert(options: SyntheticAlertOptions = {}): () => number {
   const mean = options.meanInterval ?? DEFAULT_MEAN_INTERVAL;
   const min = options.minInterval ?? DEFAULT_MIN_INTERVAL;
   const max = options.maxInterval ?? DEFAULT_MAX_INTERVAL;
   const firingDuration = options.firingDuration ?? DEFAULT_FIRING_DURATION;
-  assertPositiveFinite('mean interval', mean);
-  assertPositiveFinite('min interval', min);
-  assertPositiveFinite('max interval', max);
-  assertPositiveFinite('firing duration', firingDuration);
+  assertDuration('mean interval', mean);
+  assertDuration('min interval', min);
+  assertDuration('max interval', max);
+  assertDuration('firing duration', firingDuration);
   if (firingDuration >= mean) {
     throw new RangeError(
       `firing duration (${firingDuration}) must be less than the mean interval (${mean})`,
