@@ -11,3 +11,8 @@ rules:
   indentation:
     spaces: 2
     indent-sequences: consistent
+
+ignore:
+  - node_modules/
+  - dist/
+  - coverage/
