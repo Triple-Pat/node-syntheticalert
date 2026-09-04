@@ -38,21 +38,25 @@ jobs:
         run: npx tsc --noEmit
 
       # --- Tests ---
-      - name: Tests (100% coverage gate)
-        run: npm run test:ci
-      - name: Build
-        run: npm run build
-      # Proves the README's claim rather than asserting it.
-      - name: CommonJS consumers can require() the package
-        run: node -e "const { syntheticAlert } = require('./dist/index.js'); console.log('value', syntheticAlert()())"
-      # Feeds the README's Coveralls badge with measured coverage. Main only:
-      # fork PRs get a read-only token and the upload would fail. One matrix
-      # leg only (the first, so the condition survives matrix edits), so
-      # Coveralls sees one report per commit. A Coveralls outage must not
-      # redden a run whose lint and tests passed, hence fail-on-error: false.
+      - name: Tests
+        run: npm run test:run
+      # Feeds the README's Coveralls badge with measured coverage, so it
+      # runs before the coverage gate: the badge shows the real number even
+      # when the gate fails. Main only: fork PRs get a read-only token and
+      # the upload would fail. One matrix leg only (the first, so the
+      # condition survives matrix edits), so Coveralls sees one report per
+      # commit. A Coveralls outage must not redden a run whose lint and
+      # tests passed, hence fail-on-error: false.
       - name: Coveralls
         if: github.ref == 'refs/heads/main' && strategy.job-index == 0
         uses: coverallsapp/github-action@v2
         with:
           file: coverage/lcov.info
           fail-on-error: false
+      - name: Coverage gate
+        run: npm run coverage:check
+      - name: Build
+        run: npm run build
+      # Proves the README's claim rather than asserting it.
+      - name: CommonJS consumers can require() the package
+        run: node -e "const { syntheticAlert } = require('./dist/index.js'); console.log('value', syntheticAlert()())"

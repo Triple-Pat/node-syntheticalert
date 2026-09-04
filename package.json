@@ -37,8 +37,9 @@
     "typecheck": "tsc --noEmit",
     "lint": "prettier --check . && eslint . && npm run typecheck",
     "format": "prettier --write .",
-    "test": "node --test --experimental-test-coverage --test-coverage-include='src/**' --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 'test/*.test.ts'",
-    "test:ci": "mkdir -p coverage && node --test --experimental-test-coverage --test-coverage-include='src/**' --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=coverage/lcov.info 'test/*.test.ts'"
+    "test": "npm run test:run && npm run coverage:check",
+    "test:run": "mkdir -p coverage && node --test --experimental-test-coverage --test-coverage-include='src/**' --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=coverage/lcov.info 'test/*.test.ts'",
+    "coverage:check": "node scripts/check-coverage.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
