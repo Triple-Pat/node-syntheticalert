@@ -53,7 +53,9 @@ jobs:
           node-version: 24
           package-manager-cache: false
       - name: Publish to npm
-        run: npm publish --access public pkg/*.tgz
+        # ./ matters: npm reads a bare pkg/name.tgz as GitHub shorthand for
+        # a user/repo and tries to fetch it with git.
+        run: npm publish --access public ./pkg/*.tgz
 
   # Its own job, after publish, so a failure here re-runs alone instead of
   # repeating a publish npm would refuse. Draft, so the release notes get a
