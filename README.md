@@ -56,10 +56,90 @@ new Gauge({
 });
 ```
 
+This is for single-process servers. In a multi-process server the synthetic
+alert must come from exactly one process, and the next section shows how.
+The principle is worth stating on its own: a synthetic alert is a schedule,
+and a schedule has to have one owner. With one `syntheticAlert()` per
+worker there are as many schedules as workers, and the alert reports
+whichever one a scrape reaches. Whether that one owner is the cluster
+primary or a small sidecar exporter of its own is a deployment choice; what
+matters is that there is one.
+
+### Prometheus under cluster
+
+With the `cluster` module, every worker that calls `syntheticAlert()` runs
+a schedule of its own. If workers answer scrapes themselves, each scrape
+reaches whichever worker took the connection, and the alert flaps.
+Aggregating the workers' metrics makes it worse: the client sums a gauge
+across workers unless told otherwise, so four workers report anything from
+0 to 4, and an alert on `triplepat_synthetic_alert == 1` fires only when
+exactly one of them happens to be firing.
+
+Give the schedule to the primary, which exists exactly once, and serve
+metrics from there. `clusterMetrics()` gathers the primary's own metrics
+along with every worker's, so the one gauge appears beside the workers'
+application metrics:
+
+```js
+import cluster from 'node:cluster';
+import http from 'node:http';
+import { availableParallelism } from 'node:os';
+import { ClusterRegistry, Gauge } from '@prometheus-io/client';
+import { syntheticAlert } from '@triplepat/syntheticalert';
+
+// Before the branch: the constructor sets up the messaging in every process.
+const registry = new ClusterRegistry();
+
+if (cluster.isPrimary) {
+  const alert = syntheticAlert();
+  new Gauge({
+    name: 'triplepat_synthetic_alert',
+    help: 'Set to 1 when the synthetic alert should fire and 0 otherwise.',
+    collect() {
+      this.set(alert());
+    },
+  });
+
+  http
+    .createServer((_req, res) => {
+      registry.clusterMetrics().then(
+        (metrics) => {
+          res.setHeader('Content-Type', registry.contentType);
+          res.end(metrics);
+        },
+        (err) => {
+          res.statusCode = 500;
+          res.end(String(err));
+        },
+      );
+    })
+    .listen(9090);
+
+  for (let i = 0; i < availableParallelism(); i++) cluster.fork();
+} else {
+  // The application. Workers register their own metrics as usual, but never
+  // call syntheticAlert().
+}
+```
+
+This needs `@prometheus-io/client`. The deprecated `prom-client` 15 has no
+`ClusterRegistry`, and its `AggregatorRegistry` leaves the primary's own
+metrics out of `clusterMetrics()`, so there the gauge never appears, the
+alert never fires, and the Triple Pat app raises an alarm for a pipeline
+that is fine.
+
+Under pm2's cluster mode, pm2 itself is the primary and runs none of your
+code. Run the synthetic alert as a separate pm2 app in fork mode with
+`instances: 1`, serving its own metrics with the single-process wiring
+above, and scrape it as a target of its own. The same rule covers
+`worker_threads`: create the alert in one thread.
+
 ### OpenTelemetry
 
 The same callback serves OpenTelemetry. The OTel-to-Prometheus exporter
-turns the dotted metric name into `triplepat_synthetic_alert`:
+turns the dotted metric name into `triplepat_synthetic_alert`. The
+one-owner principle applies here too: register the observable gauge in
+exactly one process.
 
 ```js
 const gauge = meter.createObservableGauge('triplepat.synthetic.alert', {
