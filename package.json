@@ -1,6 +1,6 @@
 {
   "name": "@triplepat/syntheticalert",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "A time-based callback to drive a synthetic alert metric, so a Triple Pat check-in timer can verify your alerting pipeline end to end.",
   "keywords": [
     "alerting",
