@@ -25,3 +25,11 @@ updates:
     cooldown:
       default-days: 7
     patterns: ['*']
+    # Majors that move on purpose, by hand: @types/node tracks the engines
+    # floor (22), so the type check rejects APIs that 22 lacks, and
+    # TypeScript stays on 5 until typescript-eslint's peer range takes 7.
+    ignore:
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'typescript'
+        update-types: ['version-update:semver-major']
