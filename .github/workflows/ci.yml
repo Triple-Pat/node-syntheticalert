@@ -5,6 +5,8 @@ on:
     branches:
       - main
   pull_request:
+  # The release workflow runs this whole suite before it publishes.
+  workflow_call:
 permissions:
   contents: read
 jobs:
@@ -14,22 +16,33 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # 22 is the engines floor (22.18+ runs .ts tests directly and can
-        # require() an ES module; setup-node resolves "22" to the latest 22.x).
-        node-version: [22, 24, 26]
+        # Newest first: the one-leg steps below run on job-index 0. 22 is the
+        # engines floor (22.18+ runs .ts tests directly and can require() an
+        # ES module; setup-node resolves "22" to the latest 22.x).
+        node-version: [26, 24, 22]
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ matrix.node-version }}
-          cache: npm
+          # No cache on release tags: the published package is built here,
+          # and nothing an earlier run could have written may run beside it.
+          cache: ${{ !startsWith(github.ref, 'refs/tags/') && 'npm' || '' }}
       - run: npm ci
 
       # --- Linting ---
       - name: YAML Lint
-        uses: ibiqlik/action-yamllint@v3
+        uses: ibiqlik/action-yamllint@2576378a8e339169678f9939646ee3ee325e845c # v3.1.1
         with:
           config_file: .yamllint
+      # Node-independent, so one leg is enough.
+      - name: GitHub Actions Security Lint
+        if: strategy.job-index == 0
+        run: pipx run zizmor --format=github .
+        env:
+          GH_TOKEN: ${{ github.token }}
       - name: Prettier
         run: npx prettier --check .
       - name: ESLint
@@ -50,14 +63,44 @@ jobs:
       # fail-on-error: false.
       - name: Coveralls
         if: github.ref == 'refs/heads/main' && strategy.job-index == 0
-        uses: coverallsapp/github-action@v2
+        uses: coverallsapp/github-action@8d6379e14d29928660c4ba802d8e85393440b329 # v2.3.8
         with:
           file: coverage/lcov.info
           fail-on-error: false
       - name: Coverage gate
         run: npm run coverage:check
-      - name: Build
-        run: npm run build
-      # Proves the README's claim rather than asserting it.
-      - name: CommonJS consumers can require() the package
-        run: node -e "const { syntheticAlert } = require('./dist/index.js'); console.log('value', syntheticAlert()())"
+
+      # --- Packaging ---
+      # Checks what a release would upload, on every commit, so the first
+      # publish is not the first time the package is packed: npm pack runs
+      # the build, and the tarball installs into an empty project, where
+      # both ES module and CommonJS consumers can load it. That proves the
+      # README's require() claim against the real package, not dist/.
+      - name: Pack
+        run: |
+          mkdir -p pkg
+          npm pack --pack-destination pkg
+      - name: Install the package into an empty project
+        working-directory: ${{ runner.temp }}
+        env:
+          PKG_DIR: ${{ github.workspace }}/pkg
+        # Installs our own just-packed tarball; with no dependencies, npm
+        # fetches nothing from the registry.
+        run: | # zizmor: ignore[adhoc-packages]
+          mkdir consumer
+          cd consumer
+          npm init -y > /dev/null
+          npm install --no-audit --no-fund "${PKG_DIR}"/*.tgz
+          node --input-type=module -e "import { syntheticAlert } from '@triplepat/syntheticalert'; console.log('import', syntheticAlert()())"
+          node -e "const { syntheticAlert } = require('@triplepat/syntheticalert'); console.log('require', syntheticAlert()())"
+      # On a release tag, the release workflow publishes exactly this
+      # tarball, the one the checks above passed, so its job that holds
+      # publishing rights never runs a build. The package is plain
+      # JavaScript, so any leg's tarball serves.
+      - name: Keep the package for the release
+        if: strategy.job-index == 0 && startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: package
+          path: pkg/
+          if-no-files-found: error

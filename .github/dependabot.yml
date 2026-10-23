@@ -1,0 +1,36 @@
+# https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+version: 2
+
+# Every ecosystem below joins this group, so all updates arrive as one
+# weekly PR instead of one per ecosystem. The package itself has no
+# runtime dependencies; npm here keeps the devDependencies' lockfile current.
+multi-ecosystem-groups:
+  everything:
+    schedule:
+      interval: 'weekly'
+
+# Every ecosystem lets a release age a week before proposing it, so a
+# compromised release is likely caught upstream first. Security updates skip
+# cooldown.
+updates:
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    multi-ecosystem-group: 'everything'
+    cooldown:
+      default-days: 7
+    patterns: ['*']
+  - package-ecosystem: 'npm'
+    directory: '/'
+    multi-ecosystem-group: 'everything'
+    cooldown:
+      default-days: 7
+    patterns: ['*']
+    # Held by hand: @types/node tracks the engines floor (22), so the type
+    # check rejects APIs that 22 lacks; TypeScript 7 waits for
+    # typescript-eslint's peer range to take it. Releases below 7 still
+    # arrive, and npm ci fails any that leave typescript-eslint's range.
+    ignore:
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'typescript'
+        versions: ['>=7']
